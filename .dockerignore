@@ -1,0 +1,6 @@
+build/
+.git/
+.gitignore
+node_modules/
+*.log
+ops/observability/grafana/data/

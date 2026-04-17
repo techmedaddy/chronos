@@ -16,6 +16,24 @@ implementation can proceed without service responsibilities drifting over time.
 - Local development platform: `Docker Compose`
 - Future deployment target: `Kubernetes`
 
+## Local full backend (single compose file)
+
+Per your deployment preference, complete backend development stack runs from:
+
+- `docker-compose.yml` (repo root)
+
+Start stack:
+
+```bash
+docker compose up -d --build
+```
+
+Scale workers locally:
+
+```bash
+docker compose up -d --scale worker=10
+```
+
 ## Initial module layout
 
 - `api-server/` accepts job and schedule requests, validates them, persists them,
@@ -27,25 +45,21 @@ implementation can proceed without service responsibilities drifting over time.
 - `db-migrations/` owns schema versioning and database bootstrap artifacts.
 - `ops/` contains local dev, deployment, and observability assets.
 - `docs/` stores architecture decisions and design documents.
+- `k8s/` contains baseline Kubernetes manifests and policies.
 
-## First deliverable
+## Architecture docs
 
-The first design artifact is
-`docs/architecture/01-system-boundaries.md`, which defines the service
-boundaries and allowed dependencies between them.
-
-The second design artifact is
-`docs/architecture/02-concrete-defaults.md`, which locks the initial toolchain,
-runtime dependencies, and environment conventions.
-
-The third design artifact is
-`docs/architecture/03-domain-model.md`, which defines the core entities,
-lifecycles, and state transitions used across the system.
-
-The fourth design artifact is
-`docs/architecture/04-interface-contracts.md`, which defines the initial REST,
-queue, schema, config, and error contracts.
-
-The fifth design artifact is
-`docs/architecture/05-developer-baseline.md`, which defines the formatting,
-linting, testing, logging, configuration, and CI baseline for contributors.
+- `docs/architecture/01-system-boundaries.md`
+- `docs/architecture/02-concrete-defaults.md`
+- `docs/architecture/03-domain-model.md`
+- `docs/architecture/04-interface-contracts.md`
+- `docs/architecture/05-developer-baseline.md`
+- `docs/architecture/06-phase1-persistence-mvp.md`
+- `docs/architecture/07-phase2-api-single-node-scheduler.md`
+- `docs/architecture/08-phase3-worker-runtime.md`
+- `docs/architecture/09-phase4-rabbitmq-reliable-dispatch.md`
+- `docs/architecture/10-phase5-retry-recovery-failure-management.md`
+- `docs/architecture/11-phase6-distributed-scheduler-leader-election.md`
+- `docs/architecture/12-phase7-redis-coordination-and-phase8-observability-foundation.md`
+- `docs/architecture/13-phase8-observability-operability.md`
+- `docs/architecture/14-phase9-containerization-orchestration-scale.md`

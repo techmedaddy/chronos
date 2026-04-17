@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chronos-api
+  namespace: chronos
+spec:
+  selector:
+    app: chronos-api
+  ports:
+    - port: 8080
+      targetPort: 8080

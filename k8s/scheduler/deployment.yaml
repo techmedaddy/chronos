@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chronos-scheduler
+  namespace: chronos
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: chronos-scheduler
+  template:
+    metadata:
+      labels:
+        app: chronos-scheduler
+    spec:
+      containers:
+        - name: scheduler
+          image: chronos/scheduler:latest
+          ports:
+            - containerPort: 9091
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "echo ready"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "echo alive"]
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
