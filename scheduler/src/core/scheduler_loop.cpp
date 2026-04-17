@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "chronos/messaging/message_codec.hpp"
+#include "chronos/scheduler/leader/fencing_guard.hpp"
 #include "chronos/scheduler/observability/logger.hpp"
 #include "chronos/scheduler/scheduling/misfire_policy.hpp"
 #include "chronos/scheduler/scheduling/schedule_calculator.hpp"
@@ -33,16 +34,34 @@ SchedulerLoop::SchedulerLoop(
     std::shared_ptr<persistence::IOutboxRepository> outbox_repository,
     std::shared_ptr<executor::LocalExecutor> local_executor,
     std::shared_ptr<messaging::RabbitMqPublisher> publisher,
-    std::shared_ptr<chronos::messaging::IQueueBroker> broker)
+    std::shared_ptr<chronos::messaging::IQueueBroker> broker,
+    std::shared_ptr<leader::ILeaseStore> lease_store)
     : config_(std::move(config)),
       schedule_repository_(std::move(schedule_repository)),
       execution_repository_(std::move(execution_repository)),
       outbox_repository_(std::move(outbox_repository)),
       local_executor_(std::move(local_executor)),
       publisher_(std::move(publisher)),
-      broker_(std::move(broker)) {}
+      broker_(std::move(broker)),
+      lease_store_(std::move(lease_store)) {}
 
-void SchedulerLoop::Tick() {
+bool SchedulerLoop::Tick(const std::string& scheduler_id, const std::string& fence_token) {
+  // Fencing check: old leader must not schedule after lease loss.
+  const auto lease = lease_store_->Read(config_.lease_key);
+  if (!lease.has_value()) {
+    return false;
+  }
+
+  leader::FencingGuard guard(scheduler_id, fence_token);
+  if (!guard.Allows(lease->leader_id, lease->fence_token)) {
+    observability::Log(
+        "warn",
+        "fencing_blocked_dispatch",
+        "{\"scheduler_id\":\"" + scheduler_id +
+            "\",\"fence_token\":\"" + fence_token + "\"}");
+    return false;
+  }
+
   const auto now = time::UtcNow();
   const auto due = schedule_repository_->GetDueSchedules(now, config_.batch_size);
 
@@ -81,7 +100,6 @@ void SchedulerLoop::Tick() {
       continue;
     }
 
-    // Persist dispatch intent before execution publish/pickup.
     domain::OutboxEvent dispatch_event;
     dispatch_event.event_id = "outbox-" + execution.execution_id;
     dispatch_event.aggregate_type = "job_execution";
@@ -97,12 +115,11 @@ void SchedulerLoop::Tick() {
             domain::ExecutionState::kDispatched,
             std::nullopt,
             std::nullopt,
-            std::string("single-node-scheduler"))) {
+            std::string(scheduler_id))) {
       duplicate_guard_.Clear(dispatch_key);
       continue;
     }
 
-    // Phase 4: publish to main_queue with confirm after DB state is durable.
     chronos::messaging::ExecutionDispatchMessage message;
     message.trace_id = "trace-" + execution.execution_id;
     message.job_id = execution.job_id;
@@ -118,7 +135,6 @@ void SchedulerLoop::Tick() {
         true);
 
     if (!published) {
-      // Keep DB as truth; reconciliation will repair queue drift.
       observability::Log(
           "error",
           "dispatch_publish_failed",
@@ -126,11 +142,12 @@ void SchedulerLoop::Tick() {
       continue;
     }
 
-    // Optional local fallback path remains for local-only environments.
     if (broker_->QueueDepth(chronos::messaging::kMainQueue) == 0) {
       local_executor_->Execute(execution.execution_id);
     }
   }
+
+  return true;
 }
 
 }  // namespace chronos::scheduler::core

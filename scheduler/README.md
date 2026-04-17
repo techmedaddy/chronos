@@ -5,15 +5,15 @@ execution attempts.
 
 It is the only component that decides when a job should run.
 
-## Phase 4 status
+## Phase 6 status
 
-Implemented reliable dispatch pipeline (MVP) with:
+Added distributed-scheduler runtime primitives:
 
-- dispatch message schema + versioning
-- queue routing to `main_queue`
-- publisher confirm semantics via broker abstraction
-- persisted outbox dispatch intent before publish
-- DB-first state transition to `DISPATCHED`
-- reconciliation job for DB/queue drift repair
+- lease-based leader election abstraction (local in-memory lease store)
+- leader-only dispatch loop, follower warm mode
+- fencing-token checks before scheduling
+- bounded, jittered scan runtime with catch-up caps
+- scheduler election/scan/dispatch metrics
+- leader failover test harness
 
-Current local mode uses in-memory broker implementing manual publish/consume/ack/nack semantics.
+Current local mode is implementation-complete at architecture level; production etcd adapter wiring is the next hardening step.
