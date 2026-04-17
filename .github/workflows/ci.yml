@@ -7,25 +7,32 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28.3'
+
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ clang-tidy
+          sudo apt-get install -y ninja-build g++
+
+      - name: Show tool versions
+        run: |
+          cmake --version
+          ninja --version
+          g++ --version
 
       - name: Configure
         run: cmake --preset default
 
       - name: Build
-        run: cmake --build --preset default
+        run: cmake --build --preset default --parallel
 
       - name: Test
-        run: ctest --preset default
-
-      - name: Lint placeholder
-        run: |
-          echo "clang-tidy baseline is configured."
-          echo "Source-level lint execution will be enabled once compileable source files exist."
+        run: ctest --preset default --output-on-failure
