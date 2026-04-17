@@ -5,6 +5,7 @@ set(CHRONOS_SHARED_CORE_SOURCES
   src/retry/backoff.cpp
   src/state_machine/execution_state_machine.cpp
   src/persistence/postgres/postgres_repositories.cpp
+  src/persistence/in_memory/in_memory_repositories.cpp
 )
 
 add_library(chronos-shared-core STATIC ${CHRONOS_SHARED_CORE_SOURCES})
