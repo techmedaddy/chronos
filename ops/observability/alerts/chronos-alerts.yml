@@ -1,0 +1,38 @@
+groups:
+  - name: chronos-critical
+    rules:
+      - alert: ChronosQueueBacklogSpike
+        expr: chronos_queue_depth > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queue backlog spike detected"
+          description: "chronos_queue_depth exceeded 1000 for more than 5 minutes."
+
+      - alert: ChronosFailureRateRising
+        expr: rate(chronos_failure_total[10m]) > rate(chronos_success_total[10m]) * 0.25
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Failure rate rising"
+          description: "Failure rate crossed 25% of success rate over 10m."
+
+      - alert: ChronosNoActiveSchedulerLeader
+        expr: chronos_scheduler_active_leader < 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No active scheduler leader"
+          description: "No scheduler instance currently reports leadership."
+
+      - alert: ChronosExecutionTimeoutGrowth
+        expr: increase(chronos_scheduler_execution_timeout_growth[15m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Execution timeout growth"
+          description: "Execution timeout growth exceeded threshold in last 15m."

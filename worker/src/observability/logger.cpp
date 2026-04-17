@@ -9,6 +9,7 @@ void Log(
     const std::string& worker_id,
     const std::string& message,
     const std::string& extra_json) {
+  // extra_json should include: job_id, execution_id, attempt, worker_id, trace_id
   std::cout << "{"
             << "\"service\":\"worker\","
             << "\"level\":\"" << level << "\","

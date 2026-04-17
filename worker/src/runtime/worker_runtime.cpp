@@ -34,7 +34,13 @@ bool WorkerRuntime::SubmitExecution(
   }
 
   if (!claim_manager_.TryClaimExecution(execution_id)) {
-    observability::Log("warn", config_.worker_id, "execution_claim_failed", "{\"execution_id\":\"" + execution_id + "\"}");
+    observability::Log(
+        "warn",
+        config_.worker_id,
+        "execution_claim_failed",
+        "{\"job_id\":null,\"execution_id\":\"" + execution_id +
+            "\",\"attempt\":1,\"worker_id\":\"" + config_.worker_id +
+            "\",\"trace_id\":\"trace-" + execution_id + "\"}");
     return false;
   }
 
@@ -88,6 +94,8 @@ bool WorkerRuntime::SubmitExecution(
         return handler(input, token);
       });
 
+      const auto task_start = std::chrono::steady_clock::now();
+
       task::TaskResult result;
       if (future.wait_for(input.timeout) == std::future_status::timeout) {
         result.kind = task::TaskResultKind::kTimeout;
@@ -97,9 +105,21 @@ bool WorkerRuntime::SubmitExecution(
         result = future.get();
       }
 
+      const auto task_latency = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - task_start);
+
       heartbeat.Stop();
       result_handler_.ApplyResult(execution_id, result, config_.worker_id, 1, max_attempts);
       idempotency_store.Release(idempotency_key, execution_id);
+
+      observability::Log(
+          result.kind == task::TaskResultKind::kSuccess ? "info" : "error",
+          config_.worker_id,
+          "task_completed",
+          "{\"job_id\":null,\"execution_id\":\"" + execution_id +
+              "\",\"attempt\":1,\"worker_id\":\"" + config_.worker_id +
+              "\",\"trace_id\":\"trace-" + execution_id +
+              "\",\"task_latency_ms\":" + std::to_string(task_latency.count()) + "}");
     });
   } catch (const std::exception&) {
     return false;

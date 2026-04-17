@@ -143,6 +143,7 @@ bool SchedulerLoop::Tick(const std::string& scheduler_id, const std::string& fen
     message.idempotency_key = execution.execution_id;
     message.payload_json = "{}";
 
+    const auto publish_start = std::chrono::steady_clock::now();
     const auto published = publisher_->PublishDispatch(
         message,
         chronos::messaging::kMainQueue,
@@ -152,13 +153,28 @@ bool SchedulerLoop::Tick(const std::string& scheduler_id, const std::string& fen
       observability::Log(
           "error",
           "dispatch_publish_failed",
-          "{\"execution_id\":\"" + execution.execution_id + "\"}");
+          "{\"job_id\":\"" + execution.job_id +
+              "\",\"execution_id\":\"" + execution.execution_id +
+              "\",\"attempt\":" + std::to_string(execution.attempt_count + 1) +
+              ",\"worker_id\":null,\"trace_id\":\"" + message.trace_id + "\"}");
       continue;
     }
+
+    const auto publish_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - publish_start);
+    (void)publish_elapsed;
 
     if (broker_->QueueDepth(chronos::messaging::kMainQueue) == 0) {
       local_executor_->Execute(execution.execution_id);
     }
+
+    observability::Log(
+        "info",
+        "dispatch_published",
+        "{\"job_id\":\"" + execution.job_id +
+            "\",\"execution_id\":\"" + execution.execution_id +
+            "\",\"attempt\":" + std::to_string(execution.attempt_count + 1) +
+            ",\"worker_id\":null,\"trace_id\":\"" + message.trace_id + "\"}");
 
     // Optional distributed lock for any external side-effect path where DB constraints are insufficient.
     if (coordination_) {

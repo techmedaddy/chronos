@@ -15,6 +15,17 @@ struct Metrics {
   std::atomic<unsigned long long> jobs_created_total{0};
   std::atomic<unsigned long long> schedules_created_total{0};
   std::atomic<unsigned long long> execution_queries_total{0};
+
+  // Phase 8 observability
+  std::atomic<unsigned long long> dispatch_rate_total{0};
+  std::atomic<unsigned long long> success_total{0};
+  std::atomic<unsigned long long> failure_total{0};
+  std::atomic<unsigned long long> retry_total{0};
+  std::atomic<long long> queue_depth{0};
+  std::atomic<long long> schedule_lag_ms{0};
+  std::atomic<long long> worker_utilization_pct{0};
+  std::atomic<long long> task_latency_ms{0};
+  std::atomic<long long> db_latency_ms{0};
 };
 
 struct HandlerContext {

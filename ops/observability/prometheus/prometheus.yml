@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'chronos-api-server'
+    static_configs:
+      - targets: ['api-server:8080']
+
+  - job_name: 'chronos-scheduler'
+    static_configs:
+      - targets: ['scheduler:9091']
+
+  - job_name: 'chronos-worker'
+    static_configs:
+      - targets: ['worker:9092']
+
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']

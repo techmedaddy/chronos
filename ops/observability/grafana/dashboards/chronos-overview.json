@@ -1,0 +1,51 @@
+{
+  "title": "Chronos Overview",
+  "uid": "chronos-overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Scheduler Scan Lag (ms)",
+      "targets": [{"expr": "chronos_scheduler_scan_lag_ms"}],
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Dispatch Latency (ms)",
+      "targets": [{"expr": "chronos_scheduler_dispatch_latency_ms"}],
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue Depth",
+      "targets": [{"expr": "chronos_queue_depth"}],
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Success/Failure/Retry",
+      "targets": [
+        {"expr": "rate(chronos_success_total[5m])", "legendFormat": "success"},
+        {"expr": "rate(chronos_failure_total[5m])", "legendFormat": "failure"},
+        {"expr": "rate(chronos_retry_total[5m])", "legendFormat": "retry"}
+      ],
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Worker Utilization (%)",
+      "targets": [{"expr": "chronos_worker_utilization_pct"}],
+      "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Task + DB Latency (ms)",
+      "targets": [
+        {"expr": "chronos_task_latency_ms", "legendFormat": "task"},
+        {"expr": "chronos_db_latency_ms", "legendFormat": "db"}
+      ],
+      "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}
+    }
+  ]
+}
