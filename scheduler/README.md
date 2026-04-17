@@ -5,20 +5,15 @@ execution attempts.
 
 It is the only component that decides when a job should run.
 
-## Phase 2 status
+## Phase 4 status
 
-Implemented single-node scheduler tick pipeline:
+Implemented reliable dispatch pipeline (MVP) with:
 
-1. reads due schedules
-2. computes deterministic due/misfire/next-run decisions
-3. applies misfire policy
-4. prevents duplicate dispatches via dispatch-key guard
-5. persists execution + dispatch intent (outbox)
-6. transitions execution to `DISPATCHED`
-7. invokes local executor (no RabbitMQ path) for local integration mode
+- dispatch message schema + versioning
+- queue routing to `main_queue`
+- publisher confirm semantics via broker abstraction
+- persisted outbox dispatch intent before publish
+- DB-first state transition to `DISPATCHED`
+- reconciliation job for DB/queue drift repair
 
-Also includes scheduling helpers for:
-
-- simple cron next-run calculation (`M H * * *` subset)
-- drift guardrails
-- misfire actions (`FIRE_ONCE`, `SKIP`)
+Current local mode uses in-memory broker implementing manual publish/consume/ack/nack semantics.

@@ -6,6 +6,8 @@ set(CHRONOS_SHARED_CORE_SOURCES
   src/state_machine/execution_state_machine.cpp
   src/persistence/postgres/postgres_repositories.cpp
   src/persistence/in_memory/in_memory_repositories.cpp
+  src/messaging/message_codec.cpp
+  src/messaging/in_memory_queue_broker.cpp
 )
 
 add_library(chronos-shared-core STATIC ${CHRONOS_SHARED_CORE_SOURCES})

@@ -4,6 +4,8 @@ set(CHRONOS_SCHEDULER_SOURCES
   src/scheduling/misfire_policy.cpp
   src/scheduling/duplicate_guard.cpp
   src/executor/local_executor.cpp
+  src/messaging/rabbitmq_publisher.cpp
+  src/reconciliation/reconciliation_job.cpp
   src/observability/logger.cpp
 )
 

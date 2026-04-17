@@ -3,8 +3,11 @@
 #include <memory>
 #include <thread>
 
+#include "chronos/messaging/in_memory_queue_broker.hpp"
+#include "chronos/messaging/message_codec.hpp"
 #include "chronos/persistence/in_memory/in_memory_repositories.hpp"
 #include "chronos/time/clock.hpp"
+#include "chronos/worker/messaging/rabbitmq_consumer.hpp"
 #include "chronos/worker/runtime/worker_runtime.hpp"
 #include "chronos/worker/task/task_registry.hpp"
 
@@ -38,17 +41,25 @@ int main() {
   config.worker_id = "worker-local-1";
   config.concurrency = 4;
 
-  worker::runtime::WorkerRuntime runtime(config, executions, registry);
-  runtime.SubmitExecution(
-      "execution-demo-1",
-      "sample.echo",
-      "{\"message\":\"hello\"}",
-      "idem-1",
-      3);
+  auto runtime = std::make_shared<worker::runtime::WorkerRuntime>(config, executions, registry);
+  auto broker = std::make_shared<messaging::InMemoryQueueBroker>();
+  worker::messaging::RabbitMqConsumer consumer(broker, runtime, config.worker_id);
+
+  messaging::ExecutionDispatchMessage message;
+  message.trace_id = "trace-demo-1";
+  message.job_id = "job-demo-1";
+  message.execution_id = "execution-demo-1";
+  message.attempt = 1;
+  message.scheduled_at = time::UtcNow();
+  message.idempotency_key = "idem-1";
+  message.payload_json = "{\"message\":\"hello\"}";
+
+  broker->Publish(messaging::kMainQueue, messaging::EncodeDispatchMessage(message), true);
+  consumer.ConsumeOnceFromMain();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(300));
-  runtime.Shutdown();
+  runtime->Shutdown();
 
-  std::cout << "chronos-worker completed demo execution" << std::endl;
+  std::cout << "chronos-worker completed demo execution via main_queue consumer" << std::endl;
   return 0;
 }

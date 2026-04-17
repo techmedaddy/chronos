@@ -3,8 +3,10 @@
 #include <chrono>
 #include <memory>
 
+#include "chronos/messaging/queue_broker.hpp"
 #include "chronos/persistence/repository.hpp"
 #include "chronos/scheduler/executor/local_executor.hpp"
+#include "chronos/scheduler/messaging/rabbitmq_publisher.hpp"
 #include "chronos/scheduler/scheduling/duplicate_guard.hpp"
 
 namespace chronos::scheduler::core {
@@ -22,7 +24,9 @@ class SchedulerLoop {
       std::shared_ptr<persistence::IScheduleRepository> schedule_repository,
       std::shared_ptr<persistence::IExecutionRepository> execution_repository,
       std::shared_ptr<persistence::IOutboxRepository> outbox_repository,
-      std::shared_ptr<executor::LocalExecutor> local_executor);
+      std::shared_ptr<executor::LocalExecutor> local_executor,
+      std::shared_ptr<messaging::RabbitMqPublisher> publisher,
+      std::shared_ptr<chronos::messaging::IQueueBroker> broker);
 
   void Tick();
 
@@ -32,6 +36,8 @@ class SchedulerLoop {
   std::shared_ptr<persistence::IExecutionRepository> execution_repository_;
   std::shared_ptr<persistence::IOutboxRepository> outbox_repository_;
   std::shared_ptr<executor::LocalExecutor> local_executor_;
+  std::shared_ptr<messaging::RabbitMqPublisher> publisher_;
+  std::shared_ptr<chronos::messaging::IQueueBroker> broker_;
   scheduling::DuplicateDispatchGuard duplicate_guard_;
 };
 

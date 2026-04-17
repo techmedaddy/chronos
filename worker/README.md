@@ -5,18 +5,15 @@ Workers consume execution messages and run task handlers asynchronously.
 They own execution runtime concerns such as claiming, heartbeats, timeouts,
 retries, and graceful shutdown.
 
-## Phase 3 status
+## Phase 4 status
 
-Implemented local-mode worker runtime with:
+Implemented RabbitMQ-style consumer flow (MVP) with:
 
-- thread pool execution
-- task contract + registry
-- execution claim manager (`DISPATCHED -> RUNNING`)
-- heartbeat manager
-- timeout detection
-- result mapping to execution states
-- graceful shutdown with drain behavior
-- local stress harness (`chronos-worker-stress`)
+- consume from `main_queue` and `retry_queue`
+- manual `ack` after successful runtime submission
+- `nack` + reroute to `retry_queue` on runtime rejection
+- `nack` + reroute to `dead_letter_queue` on decode failure
 
-Current runtime accepts local submissions (in-process) and can execute end-to-end
-against in-memory repositories.
+DB remains source of truth because claim/state transition occurs before message ack.
+
+Current implementation runs against queue broker abstraction with in-memory broker in local mode.

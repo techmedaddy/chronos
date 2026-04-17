@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "chronos/messaging/message_codec.hpp"
 #include "chronos/scheduler/observability/logger.hpp"
 #include "chronos/scheduler/scheduling/misfire_policy.hpp"
 #include "chronos/scheduler/scheduling/schedule_calculator.hpp"
@@ -30,12 +31,16 @@ SchedulerLoop::SchedulerLoop(
     std::shared_ptr<persistence::IScheduleRepository> schedule_repository,
     std::shared_ptr<persistence::IExecutionRepository> execution_repository,
     std::shared_ptr<persistence::IOutboxRepository> outbox_repository,
-    std::shared_ptr<executor::LocalExecutor> local_executor)
+    std::shared_ptr<executor::LocalExecutor> local_executor,
+    std::shared_ptr<messaging::RabbitMqPublisher> publisher,
+    std::shared_ptr<chronos::messaging::IQueueBroker> broker)
     : config_(std::move(config)),
       schedule_repository_(std::move(schedule_repository)),
       execution_repository_(std::move(execution_repository)),
       outbox_repository_(std::move(outbox_repository)),
-      local_executor_(std::move(local_executor)) {}
+      local_executor_(std::move(local_executor)),
+      publisher_(std::move(publisher)),
+      broker_(std::move(broker)) {}
 
 void SchedulerLoop::Tick() {
   const auto now = time::UtcNow();
@@ -96,8 +101,34 @@ void SchedulerLoop::Tick() {
       continue;
     }
 
-    // Phase 2 local flow (no RabbitMQ): run local executor directly.
-    local_executor_->Execute(execution.execution_id);
+    // Phase 4: publish to main_queue with confirm after DB state is durable.
+    chronos::messaging::ExecutionDispatchMessage message;
+    message.trace_id = "trace-" + execution.execution_id;
+    message.job_id = execution.job_id;
+    message.execution_id = execution.execution_id;
+    message.attempt = execution.attempt_count + 1;
+    message.scheduled_at = execution.scheduled_at;
+    message.idempotency_key = execution.execution_id;
+    message.payload_json = "{}";
+
+    const auto published = publisher_->PublishDispatch(
+        message,
+        chronos::messaging::kMainQueue,
+        true);
+
+    if (!published) {
+      // Keep DB as truth; reconciliation will repair queue drift.
+      observability::Log(
+          "error",
+          "dispatch_publish_failed",
+          "{\"execution_id\":\"" + execution.execution_id + "\"}");
+      continue;
+    }
+
+    // Optional local fallback path remains for local-only environments.
+    if (broker_->QueueDepth(chronos::messaging::kMainQueue) == 0) {
+      local_executor_->Execute(execution.execution_id);
+    }
   }
 }
 

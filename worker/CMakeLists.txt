@@ -6,6 +6,7 @@ set(CHRONOS_WORKER_SOURCES
   src/execution/claim_manager.cpp
   src/execution/heartbeat_manager.cpp
   src/execution/result_handler.cpp
+  src/messaging/rabbitmq_consumer.cpp
   src/observability/logger.cpp
 )
 
