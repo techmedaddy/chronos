@@ -182,6 +182,7 @@ http::HttpResponse HandleCreateVigilRemediationJob(
   }
 
   const auto payload_hash = application::ComputeCanonicalPayloadHash(request.body);
+
   const auto existing = context->integration_idempotency_repository->Get(
       tenant_id,
       endpoint,
@@ -201,6 +202,53 @@ http::HttpResponse HandleCreateVigilRemediationJob(
     return {
         .status = 202,
         .body = existing->response_body,
+        .headers = {
+            {"content-type", "application/json"},
+            {"idempotency-replayed", "true"},
+            {"x-tenant-id", tenant_id},
+            {"x-request-id", request_id},
+            {"x-correlation-id", correlation_id},
+        },
+    };
+  }
+
+  // optimistic placeholder write to avoid race where multiple parallel requests
+  // with same idempotency key all execute business path simultaneously.
+  const application::IdempotencyRecord in_progress_record{
+      .tenant_id = tenant_id,
+      .endpoint = endpoint,
+      .idempotency_key = idempotency_key,
+      .canonical_payload_hash = payload_hash,
+      .response_body = "{\"status\":\"in_progress\"}",
+  };
+  if (!context->integration_idempotency_repository->Put(in_progress_record)) {
+    return BuildError(
+        500,
+        "CHRONOS_INTERNAL_ERROR",
+        "failed to persist idempotency record",
+        request_id,
+        correlation_id,
+        true);
+  }
+
+  // re-read after placeholder write for deterministic race handling.
+  const auto after_put = context->integration_idempotency_repository->Get(
+      tenant_id,
+      endpoint,
+      idempotency_key);
+  if (after_put.has_value() && after_put->response_body != "{\"status\":\"in_progress\"}") {
+    if (after_put->canonical_payload_hash != payload_hash) {
+      return BuildError(
+          409,
+          "CHRONOS_IDEMPOTENCY_MISMATCH",
+          "idempotency key reused with different payload",
+          request_id,
+          correlation_id,
+          false);
+    }
+    return {
+        .status = 202,
+        .body = after_put->response_body,
         .headers = {
             {"content-type", "application/json"},
             {"idempotency-replayed", "true"},
